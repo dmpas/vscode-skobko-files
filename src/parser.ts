@@ -82,7 +82,10 @@ export function tokenize(text: string): Token[] {
       while (j < len && isDigitOrDateChar(text[j])) {
         j++;
       }
-      tokens.push({ kind: 'number', start, end: j });
+      const length = j - start;
+      const isAllDigits = isDigit(ch);
+      const kind: TokenKind = (length === 14 && isAllDigits) ? 'datetime' : 'number';
+      tokens.push({ kind, start, end: j });
       i = j;
       continue;
     }
@@ -141,16 +144,7 @@ export function isDigit(ch: string): boolean {
 }
 
 export function isDigitOrDateChar(ch: string): boolean {
-  return (
-    (ch >= '0' && ch <= '9') ||
-    ch === '-' ||
-    ch === ':' ||
-    ch === 'T' ||
-    ch === 'Z' ||
-    ch === '.' ||
-    ch === '+' ||
-    ch === '/'
-  );
+  return (ch >= '0' && ch <= '9');
 }
 
 export function isBase64Char(ch: string): boolean {

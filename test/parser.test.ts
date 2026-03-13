@@ -79,8 +79,29 @@ describe('tokenize', () => {
     assert.strictEqual(tokens[0].kind, 'number');
   });
 
-  it('should tokenize datetime-like string', () => {
-    const tokens = tokenize('2024-01-15T10:30:00Z');
+  it('should tokenize datetime as 14 digits', () => {
+    const tokens = tokenize('20240115103000');
+    assert.strictEqual(tokens.length, 1);
+    assert.strictEqual(tokens[0].kind, 'datetime');
+    assert.strictEqual(tokens[0].start, 0);
+    assert.strictEqual(tokens[0].end, 14);
+  });
+
+  it('should tokenize datetime with leading zeros', () => {
+    const tokens = tokenize('00010101000000');
+    assert.strictEqual(tokens.length, 1);
+    assert.strictEqual(tokens[0].kind, 'datetime');
+    assert.strictEqual(tokens[0].end, 14);
+  });
+
+  it('should tokenize 13 digits as number, not datetime', () => {
+    const tokens = tokenize('1234567890123');
+    assert.strictEqual(tokens.length, 1);
+    assert.strictEqual(tokens[0].kind, 'number');
+  });
+
+  it('should tokenize 15 digits as number, not datetime', () => {
+    const tokens = tokenize('123456789012345');
     assert.strictEqual(tokens.length, 1);
     assert.strictEqual(tokens[0].kind, 'number');
   });
@@ -192,22 +213,20 @@ describe('isDigit', () => {
 
 describe('isDigitOrDateChar', () => {
   it('should return true for digits', () => {
-    assert.strictEqual(isDigitOrDateChar('5'), true);
+    for (let i = 0; i <= 9; i++) {
+      assert.strictEqual(isDigitOrDateChar(String(i)), true, `Failed for ${i}`);
+    }
   });
 
-  it('should return true for date-related chars', () => {
-    assert.strictEqual(isDigitOrDateChar('-'), true);
-    assert.strictEqual(isDigitOrDateChar(':'), true);
-    assert.strictEqual(isDigitOrDateChar('T'), true);
-    assert.strictEqual(isDigitOrDateChar('Z'), true);
-    assert.strictEqual(isDigitOrDateChar('.'), true);
-    assert.strictEqual(isDigitOrDateChar('+'), true);
-    assert.strictEqual(isDigitOrDateChar('/'), true);
-  });
-
-  it('should return false for other chars', () => {
+  it('should return false for non-digits', () => {
+    assert.strictEqual(isDigitOrDateChar('-'), false);
+    assert.strictEqual(isDigitOrDateChar(':'), false);
+    assert.strictEqual(isDigitOrDateChar('T'), false);
+    assert.strictEqual(isDigitOrDateChar('Z'), false);
+    assert.strictEqual(isDigitOrDateChar('.'), false);
+    assert.strictEqual(isDigitOrDateChar('+'), false);
+    assert.strictEqual(isDigitOrDateChar('/'), false);
     assert.strictEqual(isDigitOrDateChar('a'), false);
-    assert.strictEqual(isDigitOrDateChar('X'), false);
     assert.strictEqual(isDigitOrDateChar(' '), false);
   });
 });
