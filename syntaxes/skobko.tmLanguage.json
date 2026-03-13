@@ -1,0 +1,51 @@
+{
+  "scopeName": "source.skobko",
+  "name": "Skobko File",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.skobko",
+      "match": "//.*$"
+    },
+    {
+      "name": "punctuation.section.braces.curly.skobko",
+      "match": "[{}]"
+    },
+    {
+      "name": "punctuation.separator.sequence.skobko",
+      "match": ","
+    },
+    {
+      "name": "string.quoted.double.skobko",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.skobko",
+          "match": "\\\\."
+        }
+      ]
+    },
+    {
+      "name": "constant.other.datetime.skobko",
+      "match": "\\b\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:?\\d{2})?\\b"
+    },
+    {
+      "name": "constant.other.guid.skobko",
+      "match": "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b"
+    },
+    {
+      "name": "constant.numeric.skobko",
+      "match": "\\b[+-]?(?:\\d+)(?:\\.\\d+)?\\b"
+    },
+    {
+      "name": "constant.other.base64.skobko",
+      "match": "\\b[A-Za-z0-9+/]{16,}={0,2}\\b"
+    }
+  ],
+  "repository": {},
+  "fileTypes": [
+    "skb"
+  ],
+  "uuid": "e8e8f8d2-5b03-4e2f-9f0a-0000skobko000"
+}
+

@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+*.tsbuildinfo
+
+# VS Code extension package
+*.vsix
+
+# Testing
+.vscode-test/
+coverage/
+.nyc_output/
+
+# IDE / Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temp
+*.log
+npm-debug.log*
+.npm
+.env
+.env.local
+.env.*.local
+
+# Optional
+*.local
