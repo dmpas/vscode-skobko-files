@@ -13,10 +13,7 @@
     "Other",
     "Programming Languages"
   ],
-  "activationEvents": [
-    "onLanguage:skobko",
-    "onCommand:skobko.showElementPath"
-  ],
+  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
