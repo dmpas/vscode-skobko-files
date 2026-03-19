@@ -36,14 +36,20 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   class SkobkoSymbolProvider implements vscode.DocumentSymbolProvider {
-    provideDocumentSymbols(document: vscode.TextDocument, _token: vscode.CancellationToken): vscode.ProviderResult<vscode.DocumentSymbol[]> {
+    async provideDocumentSymbols(
+      document: vscode.TextDocument,
+      _token: vscode.CancellationToken,
+    ): Promise<vscode.DocumentSymbol[]> {
       const text = document.getText();
       const tokens = tokenize(text);
+      const guidMap = await getGuidMap();
 
       interface Frame {
         symbol: vscode.DocumentSymbol;
         startOffset: number;
         nextIndex: number;
+        isNested: boolean;
+        hasAppliedGuidLabel: boolean;
       }
 
       const roots: vscode.DocumentSymbol[] = [];
@@ -59,6 +65,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (t.kind === 'lbrace') {
           let name: string;
+          const isNested = stack.length !== 0;
           if (stack.length === 0) {
             // корневой элемент
             name = 'element';
@@ -81,6 +88,8 @@ export function activate(context: vscode.ExtensionContext) {
             symbol,
             startOffset: t.start,
             nextIndex: 0,
+            isNested,
+            hasAppliedGuidLabel: false,
           };
 
           if (stack.length === 0) {
@@ -124,6 +133,23 @@ export function activate(context: vscode.ExtensionContext) {
               : t.kind === 'guid'
               ? vscode.SymbolKind.Constant
               : vscode.SymbolKind.Variable;
+
+          // Если это первый элемент вложенного объекта и он является известным GUID,
+          // то показываем подпись GUID прямо в пункте OUTLINE.
+          if (
+            frame.isNested &&
+            !frame.hasAppliedGuidLabel &&
+            frame.symbol.children.length === 0 &&
+            t.kind === 'guid' &&
+            guidMap.size !== 0
+          ) {
+            const guidText = text.slice(t.start, t.end);
+            const label = guidMap.get(guidText.toLowerCase());
+            if (label) {
+              frame.hasAppliedGuidLabel = true;
+              frame.symbol.name = `${frame.symbol.name} ${label}`;
+            }
+          }
 
           const child = new vscode.DocumentSymbol(
             name,
