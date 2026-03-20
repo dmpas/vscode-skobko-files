@@ -7,6 +7,8 @@ import {
   isBase64Char,
   extractSkobkoObjectRange,
   countDirectChildElementsForOpeningBraces,
+  formatWithAlignment,
+  formatNormally,
 } from '../src/parser';
 
 describe('tokenize', () => {
@@ -356,5 +358,52 @@ describe('countDirectChildElementsForOpeningBraces', () => {
   it('should count elements across whitespace', () => {
     const map = countDirectChildElementsForOpeningBraces(tokenize('{ 1 , {2} , 3 }'));
     assert.strictEqual(map.get(0), 3);
+  });
+});
+
+describe('formatWithAlignment', () => {
+  it('should put each value on separate line with indentation', () => {
+    const input = '{1,{2,3},4}';
+    const result = formatWithAlignment(input);
+    const expected = ['{', '  1,', '  {', '    2,', '    3', '  },', '  4', '}'].join('\n');
+    assert.strictEqual(result, expected);
+  });
+
+  it('should keep single-value object in one line', () => {
+    const input = '{1}';
+    const result = formatWithAlignment(input);
+    assert.strictEqual(result, '{ 1 }');
+  });
+
+  it('should keep nested single-value objects inline', () => {
+    const input = '{{1}}';
+    const result = formatWithAlignment(input);
+    assert.strictEqual(result, '{ { 1 } }');
+  });
+});
+
+describe('formatNormally', () => {
+  it('should not insert space after commas', () => {
+    const input = '{1,2,3}';
+    const result = formatNormally(input);
+    assert.strictEqual(result, '{1,2,3}');
+  });
+
+  it('should place each opening brace on a new line', () => {
+    const input = '{{1,2}}';
+    const result = formatNormally(input);
+    assert.strictEqual(result, '{\n{1,2}\n}');
+  });
+
+  it('should add newline between consecutive closing braces', () => {
+    const input = '{{1}}';
+    const result = formatNormally(input);
+    assert.strictEqual(result, '{\n{1}\n}');
+  });
+
+  it('should preserve newlines inside multiline strings', () => {
+    const input = '{"line1\nline2"}';
+    const result = formatNormally(input);
+    assert.strictEqual(result, '{"line1\nline2"}');
   });
 });

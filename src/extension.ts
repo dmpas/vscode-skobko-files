@@ -9,6 +9,8 @@ import {
   parseGuidsMarkdown,
   extractSkobkoObjectRange,
   countDirectChildElementsForOpeningBraces,
+  formatWithAlignment,
+  formatNormally,
 } from './parser';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -368,12 +370,56 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const formatWithAlignmentCommand = vscode.commands.registerCommand(
+    'skobkoFiles.formatWithAlignment',
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return;
+      }
+
+      const document = editor.document;
+      const formatted = formatWithAlignment(document.getText());
+      const fullRange = new vscode.Range(
+        document.positionAt(0),
+        document.positionAt(document.getText().length),
+      );
+
+      await editor.edit(builder => {
+        builder.replace(fullRange, formatted);
+      });
+    },
+  );
+
+  const formatNormallyCommand = vscode.commands.registerCommand(
+    'skobkoFiles.formatNormally',
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return;
+      }
+
+      const document = editor.document;
+      const formatted = formatNormally(document.getText());
+      const fullRange = new vscode.Range(
+        document.positionAt(0),
+        document.positionAt(document.getText().length),
+      );
+
+      await editor.edit(builder => {
+        builder.replace(fullRange, formatted);
+      });
+    },
+  );
+
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(selector, new SkobkoSymbolProvider()),
     vscode.languages.registerFoldingRangeProvider(selector, new SkobkoFoldingRangeProvider()),
     vscode.languages.registerDefinitionProvider(selector, new SkobkoDefinitionProvider()),
     vscode.languages.registerInlayHintsProvider(selector, new SkobkoInlayHintsProvider()),
     extractCurrentObjectToNewFile,
+    formatWithAlignmentCommand,
+    formatNormallyCommand,
     onDocumentOpen,
   );
 }

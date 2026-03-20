@@ -274,3 +274,196 @@ export function countDirectChildElementsForOpeningBraces(tokens: Token[]): Map<n
 
   return counts;
 }
+
+type ValueNode = PrimitiveNode | ObjectNode;
+
+interface PrimitiveNode {
+  type: 'primitive';
+  raw: string;
+}
+
+interface ObjectNode {
+  type: 'object';
+  children: ValueNode[];
+}
+
+function appendCommaToValueText(text: string): string {
+  const lastNewline = text.lastIndexOf('\n');
+  if (lastNewline === -1) {
+    return `${text},`;
+  }
+
+  return `${text.slice(0, lastNewline + 1)}${text.slice(lastNewline + 1)},`;
+}
+
+function parseValueNodes(tokens: Token[], text: string): ValueNode[] | undefined {
+  let i = 0;
+
+  const skipIgnorable = () => {
+    while (i < tokens.length) {
+      const kind = tokens[i].kind;
+      if (kind !== 'whitespace' && kind !== 'comma') {
+        break;
+      }
+      i++;
+    }
+  };
+
+  const parseValue = (): ValueNode | undefined => {
+    skipIgnorable();
+    if (i >= tokens.length) {
+      return undefined;
+    }
+
+    const token = tokens[i];
+    if (token.kind === 'rbrace') {
+      return undefined;
+    }
+
+    if (token.kind === 'lbrace') {
+      i++;
+      const children: ValueNode[] = [];
+
+      while (i < tokens.length) {
+        skipIgnorable();
+        if (i >= tokens.length) {
+          return undefined;
+        }
+
+        if (tokens[i].kind === 'rbrace') {
+          i++;
+          return { type: 'object', children };
+        }
+
+        const child = parseValue();
+        if (!child) {
+          return undefined;
+        }
+        children.push(child);
+      }
+
+      return undefined;
+    }
+
+    i++;
+    return { type: 'primitive', raw: text.slice(token.start, token.end) };
+  };
+
+  const roots: ValueNode[] = [];
+  while (i < tokens.length) {
+    skipIgnorable();
+    if (i >= tokens.length) {
+      break;
+    }
+
+    if (tokens[i].kind === 'rbrace') {
+      return undefined;
+    }
+
+    const value = parseValue();
+    if (!value) {
+      return undefined;
+    }
+    roots.push(value);
+  }
+
+  return roots;
+}
+
+function formatAlignedValue(node: ValueNode, depth: number): string {
+  const indent = '  '.repeat(depth);
+
+  if (node.type === 'primitive') {
+    return `${indent}${node.raw}`;
+  }
+
+  if (node.children.length === 1) {
+    const childInline = formatAlignedInlineValue(node.children[0]);
+    return `${indent}{ ${childInline} }`;
+  }
+
+  const lines: string[] = [`${indent}{`];
+  for (let index = 0; index < node.children.length; index++) {
+    const childText = formatAlignedValue(node.children[index], depth + 1);
+    const withComma =
+      index < node.children.length - 1 ? appendCommaToValueText(childText) : childText;
+    lines.push(withComma);
+  }
+  lines.push(`${indent}}`);
+  return lines.join('\n');
+}
+
+function formatAlignedInlineValue(node: ValueNode): string {
+  if (node.type === 'primitive') {
+    return node.raw;
+  }
+
+  if (node.children.length === 0) {
+    return '{}';
+  }
+
+  if (node.children.length === 1) {
+    return `{ ${formatAlignedInlineValue(node.children[0])} }`;
+  }
+
+  return `{ ${node.children.map(formatAlignedInlineValue).join(', ')} }`;
+}
+
+function writeStandardValue(node: ValueNode, out: string[]): void {
+  if (node.type === 'primitive') {
+    out.push(node.raw);
+    return;
+  }
+
+  out.push('\n{');
+  for (let i = 0; i < node.children.length; i++) {
+    if (i > 0) {
+      out.push(',');
+    }
+    writeStandardValue(node.children[i], out);
+  }
+
+  const lastPart = out.length > 0 ? out[out.length - 1] : '';
+  let lastNonSpaceChar = '';
+  for (let i = lastPart.length - 1; i >= 0; i--) {
+    const ch = lastPart[i];
+    if (ch !== ' ' && ch !== '\n' && ch !== '\r' && ch !== '\t') {
+      lastNonSpaceChar = ch;
+      break;
+    }
+  }
+
+  if (lastNonSpaceChar === '}') {
+    out.push('\n');
+  }
+  out.push('}');
+}
+
+export function formatWithAlignment(text: string): string {
+  const tokens = tokenize(text);
+  const nodes = parseValueNodes(tokens, text);
+  if (!nodes) {
+    return text;
+  }
+
+  const parts = nodes.map(node => formatAlignedValue(node, 0));
+  return parts.join('\n');
+}
+
+export function formatNormally(text: string): string {
+  const tokens = tokenize(text);
+  const nodes = parseValueNodes(tokens, text);
+  if (!nodes) {
+    return text;
+  }
+
+  const out: string[] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    if (i > 0) {
+      out.push(' ');
+    }
+    writeStandardValue(nodes[i], out);
+  }
+
+  return out.join('').trimStart();
+}

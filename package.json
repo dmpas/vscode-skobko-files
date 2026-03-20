@@ -57,6 +57,14 @@
       {
         "command": "skobkoFiles.extractCurrentObjectToNewFile",
         "title": "Выделить текущий объект в новый файл"
+      },
+      {
+        "command": "skobkoFiles.formatWithAlignment",
+        "title": "Форматировать с выравниванием"
+      },
+      {
+        "command": "skobkoFiles.formatNormally",
+        "title": "Форматировать штатно"
       }
     ]
   },
