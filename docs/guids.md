@@ -107,3 +107,23 @@
 | e3403acd-1c95-421b-87e4-4dfa29d38b52 | Таблицы | Таблицы (Внешние источники данных) | ExternalDataSourceTable |
 | 17816ebc-4068-496e-adc4-8879945a832f | Формы | Формы (Таблицы) | ExternalDataSourceTableForm |
 | 5bb6f09e-5d80-41f6-8070-9faa4d15b69b | Команды | Команды (Таблицы) | ExternalDataSourceTableCommand |
+| cf4abea7-37b2-11d4-940f-008048da11f9 | Реквизиты | Реквизиты справочника | CatalogAttributes |
+| 932159f9-95b2-4e76-a8dd-8849fe5c5ded | Табличные части | Табличные части справочника | CatalogTabularSections |
+| 888744e1-b616-11d4-9436-004095e12fc7 | Реквизиты ТЧ | Реквизиты табличной части любого объекта метаданных | TabularSectionAttributes |
+| 45e46cbc-3e24-4165-8b7b-cc98a6f80211 | Реквизиты | Реквизиты документа | DocumentAttributes |
+| 21c53e09-8950-4b5e-a6a0-1054f1bbc274 | Табличные части | Табличные части документа | DocumentTabularSections |
+| 31182525-9346-4595-81f8-6f91a72ebe06 | Реквизиты | Реквизиты плана вида характеристик | ChartOfCharacteristicTypeAttributes |
+| 54e36536-7863-42fd-bea3-c5edd3122fdc | Табличные части | Табличные части плана видов характеристик | ChartOfCharacteristicTypeTabularSections |
+| 1a1b4fea-e093-470d-94ff-1d2f16cda2ab | Реквизиты | Реквизиты плана обмена | ExchangePlanAttributes |
+| 52293f4b-f98c-43ea-a80f-41047ae7ab58 | Табличные части | Табличные части плана обмена | ExchangePlanTabularSections |
+| 13134203-f60b-11d5-a3c7-0050bae0a776 | Измерения | Измерения регистра сведений | InformationRegisterDimensions |
+| 13134202-f60b-11d5-a3c7-0050bae0a776 | Ресурсы | Ресурсы регистра сведений | InformationRegisterResources |
+| a2207540-1400-11d6-a3c7-0050bae0a776 | Реквизиты | Реквизиты регистра сведений | InformationRegisterAttributes |
+| b64d9a43-1642-11d6-a3c7-0050bae0a776 | Измерения | Измерения регистра накопления | AccumulationRegisterDimensions |
+| b64d9a41-1642-11d6-a3c7-0050bae0a776 | Ресурсы | Ресурсы регистра накопления | AccumulationRegisterResources |
+| b64d9a42-1642-11d6-a3c7-0050bae0a776 | Реквизиты | Реквизиты регистра накопления | AccumulationRegisterAttributes |
+| 6e65cbf5-daa8-4d8d-bef8-59723f4e5777 | Реквизиты | Реквизиты плана счетов | ChartOfAccountsAttributes |
+| 78bd1243-c4df-46c3-8138-e147465cb9a4 | Признаки учета | признаков учёта плана счетов | ChartOfAccountsAccountingFlags |
+| 35b63b9d-0adf-4625-a047-10ae874c19a3 | Измерения | Измерения регистра бухгалтерского учёта | AccountingRegisterDimensions |
+| 63405499-7491-4ce3-ac72-43433cbe4112 | Ресурсы | Ресурсы регистра бухгалтерского учёта | AccountingRegisterResources |
+| 9d28ee33-9c7e-4a1b-8f13-50aa9b36607b | Реквизиты | Реквизиты регистра бухгалтерского учёта | AccountingRegisterAttributes |
