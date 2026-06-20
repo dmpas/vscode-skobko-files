@@ -9,6 +9,12 @@ import {
   countDirectChildElementsForOpeningBraces,
   formatWithAlignment,
   formatNormally,
+  findFirstGuidInText,
+  findGuidOnLine,
+  buildOutputExtensionFromProjectFileContent,
+  resolveBuildOutputExtension,
+  findExistingBuildOutputPath,
+  resolveBuildOutputPath,
 } from '../src/parser';
 
 describe('tokenize', () => {
@@ -420,5 +426,96 @@ describe('formatNormally', () => {
     const input = '{"line1\nline2"}';
     const result = formatNormally(input);
     assert.strictEqual(result, '{"line1\nline2"}');
+  });
+});
+
+describe('build output extension', () => {
+  it('should find first guid in root file', () => {
+    const guid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    assert.strictEqual(findFirstGuidInText(`{${guid}, "meta"}`), guid);
+  });
+
+  it('should find guid on third line of project file', () => {
+    const typeGuid = '9cd510cd-abfc-11d4-9434-004095e12fc7';
+    const content = `{\n"line2"\n${typeGuid}\n"line4"`;
+    assert.strictEqual(findGuidOnLine(content, 3), typeGuid);
+  });
+
+  it('should map project type guid to output extension', () => {
+    const content = `{\n"line2"\n9cd510cd-abfc-11d4-9434-004095e12fc7\n"line4"`;
+    assert.strictEqual(buildOutputExtensionFromProjectFileContent(content), 'cf');
+
+    const erfContent = `{\n"line2"\ne41aff26-25cf-4bb6-b6c1-3f478a75f374\n"line4"`;
+    assert.strictEqual(buildOutputExtensionFromProjectFileContent(erfContent), 'erf');
+
+    const epfContent = `{\n"line2"\nc3831ec8-d8d5-4f93-8a22-f9bfae07327f\n"line4"`;
+    assert.strictEqual(buildOutputExtensionFromProjectFileContent(epfContent), 'epf');
+  });
+
+  it('should resolve cfe when configinfo exists without root', () => {
+    assert.strictEqual(
+      resolveBuildOutputExtension({ hasConfigInfoFile: true }),
+      'cfe',
+    );
+  });
+
+  it('should resolve extension from root and project file', () => {
+    const typeGuid = 'c3831ec8-d8d5-4f93-8a22-f9bfae07327f';
+    const projectContent = `{\n"line2"\n${typeGuid}\n"line4"`;
+    assert.strictEqual(
+      resolveBuildOutputExtension({
+        rootFileContent: '{bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb}',
+        projectFileContent: projectContent,
+        hasConfigInfoFile: false,
+      }),
+      'epf',
+    );
+  });
+
+  it('should not fall back to cfe when root exists but project type is unknown', () => {
+    assert.strictEqual(
+      resolveBuildOutputExtension({
+        rootFileContent: '{bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb}',
+        projectFileContent: '{\n"line2"\nunknown-guid\n"line4"',
+        hasConfigInfoFile: true,
+      }),
+      undefined,
+    );
+  });
+
+  it('should find existing build output file when extension is unknown', () => {
+    const projectPath = 'C:\\Project\\Skobko';
+
+    assert.strictEqual(
+      findExistingBuildOutputPath(projectPath, ['Skobko.erf']),
+      'C:\\Project\\Skobko.erf',
+    );
+  });
+
+  it('should find existing build output file with arbitrary extension', () => {
+    const projectPath = 'C:\\Project\\Skobko';
+
+    assert.strictEqual(
+      findExistingBuildOutputPath(projectPath, ['Skobko.custom']),
+      'C:\\Project\\Skobko.custom',
+    );
+  });
+
+  it('should prefer detected extension over existing file', () => {
+    const projectPath = 'C:\\Project\\Skobko';
+
+    assert.strictEqual(
+      resolveBuildOutputPath(projectPath, 'cf', ['Skobko.erf']),
+      `${projectPath}.cf`,
+    );
+  });
+
+  it('should fall back to existing build output file', () => {
+    const projectPath = 'C:\\Project\\Skobko';
+
+    assert.strictEqual(
+      resolveBuildOutputPath(projectPath, undefined, ['Skobko.epf']),
+      `${projectPath}.epf`,
+    );
   });
 });

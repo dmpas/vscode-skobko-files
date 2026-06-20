@@ -2,7 +2,7 @@
   "name": "vscode-skobko-files",
   "displayName": "Skobko Files Support",
   "description": "Поддержка скобко-файлов",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "license": "MPL-2.0",
   "author": "dmpas",
   "publisher": "dmpas",
@@ -50,9 +50,35 @@
           "type": "boolean",
           "default": false,
           "description": "Показывать количество прямых (нерекурсивных) элементов справа от открывающейся фигурной скобки `{`."
+        },
+        "skobkoFiles.v8unpack.path": {
+          "type": "string",
+          "default": "",
+          "description": "Полный путь к утилите v8unpack. Если не задан, используется v8unpack из PATH."
         }
       }
     },
+    "taskDefinitions": [
+      {
+        "type": "skobkoFiles",
+        "required": [
+          "task"
+        ],
+        "properties": {
+          "task": {
+            "type": "string",
+            "description": "Задача сборки skobko",
+            "enum": [
+              "build"
+            ]
+          },
+          "folder": {
+            "type": "string",
+            "description": "Имя каталога рабочей области"
+          }
+        }
+      }
+    ],
     "commands": [
       {
         "command": "skobkoFiles.extractCurrentObjectToNewFile",
@@ -65,6 +91,11 @@
       {
         "command": "skobkoFiles.formatNormally",
         "title": "Форматировать штатно"
+      },
+      {
+        "command": "skobkoFiles.build",
+        "title": "Собрать конфигурацию (v8unpack)",
+        "icon": "$(tools)"
       }
     ]
   },

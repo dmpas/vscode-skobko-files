@@ -518,3 +518,111 @@ export function formatNormally(text: string): string {
 
   return out.join('').trimStart();
 }
+
+const BUILD_TYPE_GUID_EXTENSIONS: Readonly<Record<string, string>> = {
+  'e41aff26-25cf-4bb6-b6c1-3f478a75f374': 'erf',
+  '9cd510cd-abfc-11d4-9434-004095e12fc7': 'cf',
+  'c3831ec8-d8d5-4f93-8a22-f9bfae07327f': 'epf',
+};
+
+export const BUILD_OUTPUT_EXTENSIONS = ['cf', 'erf', 'epf', 'cfe'] as const;
+
+export function findFirstGuidInText(text: string): string | undefined {
+  for (const token of tokenize(text)) {
+    if (token.kind === 'guid') {
+      return text.slice(token.start, token.end).toLowerCase();
+    }
+  }
+
+  return undefined;
+}
+
+export function findGuidOnLine(text: string, lineNumber: number): string | undefined {
+  const lines = text.split(/\r?\n/);
+  if (lineNumber < 1 || lineNumber > lines.length) {
+    return undefined;
+  }
+
+  const match =
+    /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/.exec(lines[lineNumber - 1]);
+
+  return match ? match[0].toLowerCase() : undefined;
+}
+
+export function buildOutputExtensionFromProjectFileContent(content: string): string | undefined {
+  const typeGuid = findGuidOnLine(content, 3);
+  if (!typeGuid) {
+    return undefined;
+  }
+
+  return BUILD_TYPE_GUID_EXTENSIONS[typeGuid];
+}
+
+export function resolveBuildOutputExtension(options: {
+  rootFileContent?: string;
+  projectFileContent?: string;
+  hasConfigInfoFile: boolean;
+}): string | undefined {
+  if (options.rootFileContent !== undefined) {
+    if (options.projectFileContent === undefined) {
+      return undefined;
+    }
+
+    return buildOutputExtensionFromProjectFileContent(options.projectFileContent);
+  }
+
+  if (options.hasConfigInfoFile) {
+    return 'cfe';
+  }
+
+  return undefined;
+}
+
+export function findExistingBuildOutputPath(
+  projectPath: string,
+  fileNamesInParentDirectory: string[],
+): string | undefined {
+  const normalized = projectPath.replace(/[\\/]+$/, '');
+  const lastSep = Math.max(normalized.lastIndexOf('/'), normalized.lastIndexOf('\\'));
+  const parentDir = lastSep >= 0 ? normalized.slice(0, lastSep) : '';
+  const baseName = lastSep >= 0 ? normalized.slice(lastSep + 1) : normalized;
+  const separator = normalized.includes('\\') ? '\\' : '/';
+  const prefix = `${baseName}.`;
+
+  let bestMatch: string | undefined;
+  let bestPriority = Number.MAX_SAFE_INTEGER;
+
+  for (const fileName of fileNamesInParentDirectory) {
+    if (!fileName.startsWith(prefix) || fileName.length <= prefix.length) {
+      continue;
+    }
+
+    const fullPath = parentDir ? `${parentDir}${separator}${fileName}` : fileName;
+    const ext = fileName.slice(prefix.length).toLowerCase();
+    const knownIndex = (BUILD_OUTPUT_EXTENSIONS as readonly string[]).indexOf(ext);
+    const priority = knownIndex >= 0 ? knownIndex : BUILD_OUTPUT_EXTENSIONS.length;
+
+    if (
+      !bestMatch
+      || priority < bestPriority
+      || (priority === bestPriority && fullPath.localeCompare(bestMatch) < 0)
+    ) {
+      bestPriority = priority;
+      bestMatch = fullPath;
+    }
+  }
+
+  return bestMatch;
+}
+
+export function resolveBuildOutputPath(
+  projectPath: string,
+  extension: string | undefined,
+  fileNamesInParentDirectory: string[],
+): string | undefined {
+  if (extension) {
+    return `${projectPath}.${extension}`;
+  }
+
+  return findExistingBuildOutputPath(projectPath, fileNamesInParentDirectory);
+}

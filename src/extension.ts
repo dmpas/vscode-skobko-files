@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import {
   Token,
@@ -12,6 +14,9 @@ import {
   countDirectChildElementsForOpeningBraces,
   formatWithAlignment,
   formatNormally,
+  findFirstGuidInText,
+  resolveBuildOutputExtension,
+  resolveBuildOutputPath,
 } from './parser';
 
 interface ParsedPrimitiveNode {
@@ -106,6 +111,118 @@ function unquoteStringToken(text: string): string {
     return text.slice(1, -1);
   }
   return text;
+}
+
+function getV8UnpackExecutable(): string {
+  const config = vscode.workspace.getConfiguration('skobkoFiles');
+  const customPath = config.get<string>('v8unpack.path', '').trim();
+  return customPath || 'v8unpack';
+}
+
+function getBuildOutputExtension(projectPath: string): string | undefined {
+  const rootPath = path.join(projectPath, 'root');
+  const configInfoPath = path.join(projectPath, 'configinfo');
+
+  if (fs.existsSync(rootPath)) {
+    const rootContent = fs.readFileSync(rootPath, 'utf8');
+    const keyFileGuid = findFirstGuidInText(rootContent);
+    if (!keyFileGuid) {
+      return undefined;
+    }
+
+    const keyFilePath = path.join(projectPath, keyFileGuid);
+    if (!fs.existsSync(keyFilePath)) {
+      return undefined;
+    }
+
+    const projectFileContent = fs.readFileSync(keyFilePath, 'utf8');
+    return resolveBuildOutputExtension({
+      rootFileContent: rootContent,
+      projectFileContent,
+      hasConfigInfoFile: false,
+    });
+  }
+
+  return resolveBuildOutputExtension({
+    hasConfigInfoFile: fs.existsSync(configInfoPath),
+  });
+}
+
+function listBuildCandidateFileNames(projectPath: string): string[] {
+  const parentDir = path.dirname(projectPath);
+
+  try {
+    return fs.readdirSync(parentDir).filter(name => {
+      try {
+        return fs.statSync(path.join(parentDir, name)).isFile();
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return [];
+  }
+}
+
+function getBuildOutputPath(projectPath: string): string | undefined {
+  const extension = getBuildOutputExtension(projectPath);
+  return resolveBuildOutputPath(projectPath, extension, listBuildCandidateFileNames(projectPath));
+}
+
+function createBuildTask(workspaceFolder: vscode.WorkspaceFolder): vscode.Task | undefined {
+  const projectPath = workspaceFolder.uri.fsPath.replace(/[\\/]+$/, '');
+  const outputPath = getBuildOutputPath(projectPath);
+  if (!outputPath) {
+    return undefined;
+  }
+
+  const v8unpack = getV8UnpackExecutable();
+
+  const task = new vscode.Task(
+    { type: 'skobkoFiles', task: 'build', folder: workspaceFolder.name },
+    workspaceFolder,
+    `Собрать ${path.basename(outputPath)}`,
+    'skobkoFiles',
+    new vscode.ShellExecution(v8unpack, ['-build', projectPath, outputPath]),
+  );
+
+  task.group = vscode.TaskGroup.Build;
+  task.presentationOptions = {
+    reveal: vscode.TaskRevealKind.Always,
+    panel: vscode.TaskPanelKind.Shared,
+  };
+
+  return task;
+}
+
+async function pickWorkspaceFolder(): Promise<vscode.WorkspaceFolder | undefined> {
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) {
+    return undefined;
+  }
+
+  if (folders.length === 1) {
+    return folders[0];
+  }
+
+  const activeEditor = vscode.window.activeTextEditor;
+  if (activeEditor) {
+    const activeFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+    if (activeFolder) {
+      return activeFolder;
+    }
+  }
+
+  const picked = await vscode.window.showQuickPick(
+    folders.map(folder => ({
+      label: folder.name,
+      description: folder.uri.fsPath,
+      folder,
+    })),
+    { placeHolder: 'Выберите каталог проекта для сборки' },
+  );
+
+  return picked?.folder;
 }
 
 function isNamedImageFile(document: vscode.TextDocument): boolean {
@@ -599,6 +716,54 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const buildCommand = vscode.commands.registerCommand('skobkoFiles.build', async () => {
+    const folder = await pickWorkspaceFolder();
+    if (!folder) {
+      vscode.window.showErrorMessage('Откройте каталог проекта в рабочей области.');
+      return;
+    }
+
+    const task = createBuildTask(folder);
+    if (!task) {
+      vscode.window.showErrorMessage(
+        'Не удалось определить выходной файл сборки. Проверьте файлы root, configinfo или наличие файла сборки рядом с каталогом проекта.',
+      );
+      return;
+    }
+
+    await vscode.tasks.executeTask(task);
+  });
+
+  const buildTaskProvider = vscode.tasks.registerTaskProvider('skobkoFiles', {
+    provideTasks: () => {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders) {
+        return [];
+      }
+
+      return folders
+        .map(folder => createBuildTask(folder))
+        .filter((task): task is vscode.Task => task !== undefined);
+    },
+    resolveTask: (task: vscode.Task) => {
+      const definition = task.definition as { type: string; task: string; folder?: string };
+      if (definition.type !== 'skobkoFiles' || definition.task !== 'build') {
+        return undefined;
+      }
+
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      const folder = definition.folder
+        ? folders.find(item => item.name === definition.folder)
+        : folders[0];
+
+      if (!folder) {
+        return undefined;
+      }
+
+      return createBuildTask(folder);
+    },
+  });
+
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(selector, new SkobkoSymbolProvider()),
     vscode.languages.registerFoldingRangeProvider(selector, new SkobkoFoldingRangeProvider()),
@@ -607,6 +772,8 @@ export function activate(context: vscode.ExtensionContext) {
     extractCurrentObjectToNewFile,
     formatWithAlignmentCommand,
     formatNormallyCommand,
+    buildCommand,
+    buildTaskProvider,
     onDocumentOpen,
   );
 }
